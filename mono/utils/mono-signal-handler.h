@@ -99,4 +99,7 @@ typedef struct {
 #define MONO_SIG_HANDLER_GET_INFO() (_info)
 #define MONO_SIG_HANDLER_GET_CONTEXT void *ctx = context;
 
+void mono_load_signames (void);
+const char * mono_get_signame (int signo);
+
 #endif // __MONO_SIGNAL_HANDLER_H__
