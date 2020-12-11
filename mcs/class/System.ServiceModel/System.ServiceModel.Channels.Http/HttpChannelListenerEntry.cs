@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -47,14 +48,14 @@ namespace System.ServiceModel.Channels.Http
 		{
 			ChannelDispatcher = channel;
 			WaitHandle = waitHandle;
-			ContextQueue = new Queue<HttpContextInfo> ();
+			ContextQueue = new ConcurrentQueue<HttpContextInfo> ();
 			RetrieverLock = new object ();
 		}
 		
 		public object RetrieverLock { get; private set; }
 		public ChannelDispatcher ChannelDispatcher { get; private set; }
 		public EventWaitHandle WaitHandle { get; private set; }
-		public Queue<HttpContextInfo> ContextQueue { get; private set; }
+		public ConcurrentQueue<HttpContextInfo> ContextQueue { get; private set; }
 
 		internal static int CompareEntries (HttpChannelListenerEntry e1, HttpChannelListenerEntry e2)
 		{

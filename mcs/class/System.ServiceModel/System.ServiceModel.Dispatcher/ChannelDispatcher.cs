@@ -503,7 +503,8 @@ namespace System.ServiceModel.Dispatcher
 					// FIXME: take MaxConcurrentCalls into consideration appropriately.
 					while (loop && channels.Count < Math.Min (owner.ServiceThrottle.MaxConcurrentSessions, owner.ServiceThrottle.MaxConcurrentCalls)) {
 						// FIXME: this should not be required, but saves multi-ChannelDispatcher case (Throttling enabled) for HTTP standalone listener...
-						Thread.Sleep (100);
+						if (!ServiceHostingEnvironmentInternal.InAspNet)
+							Thread.Sleep (100);
 						channel_acceptor ();
 						creator_handle.WaitOne (); // released by ChannelAccepted()
 					}

@@ -113,7 +113,7 @@ namespace System.ServiceModel.Channels.Http
 					bool ret = ce.WaitHandle.WaitOne (waitTimeout);
 					return ret && TryDequeueRequest (channel, waitTimeout - (DateTime.UtcNow - start), out context); // recurse, am lazy :/
 				}
-				context = q.Dequeue ();
+				q.TryDequeue (out context);
 				return true;
 			}
 		}
