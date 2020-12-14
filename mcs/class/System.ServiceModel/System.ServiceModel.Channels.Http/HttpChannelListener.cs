@@ -81,25 +81,19 @@ namespace System.ServiceModel.Channels.Http
 
 		public ServiceCredentialsSecurityTokenManager SecurityTokenManager { get; private set; }
 
-		ManualResetEvent accept_channel_handle = new ManualResetEvent (true);
-
 		protected override TChannel OnAcceptChannel (TimeSpan timeout)
 		{
 			// HTTP channel could be accepted while there is no incoming request yet. The reply channel waits for the actual request.
-			// HTTP channel listeners do not accept more than one channel at a time.
 			DateTime start = DateTime.UtcNow;
 			TimeSpan waitTimeout;
 			if (timeout == TimeSpan.MaxValue)
 				waitTimeout = TimeSpan.FromMilliseconds(int.MaxValue);
 			else
 				waitTimeout = timeout - (DateTime.UtcNow - start);
-			accept_channel_handle.WaitOne (waitTimeout);
-			accept_channel_handle.Reset (); 
-			TChannel ch = CreateChannel (timeout - (DateTime.UtcNow - start));
-			ch.Closed += delegate {
-				accept_channel_handle.Set ();
-			};
-			return ch;
+			
+			// Wait for a request to create a channel
+			ListenerManager.WaitForRequest (ChannelDispatcher, waitTimeout);
+			return CreateChannel (timeout - (DateTime.UtcNow - start));
 		}
 
 		protected TChannel CreateChannel (TimeSpan timeout)
@@ -154,7 +148,8 @@ namespace System.ServiceModel.Channels.Http
 		public override bool CancelAsync (TimeSpan timeout)
 		{
 			try {
-				CurrentAsyncResult.AsyncWaitHandle.WaitOne (TimeSpan.Zero);
+				foreach (var pair in CurrentAsyncThreads)
+					pair.Value.AsyncWaitHandle.WaitOne (TimeSpan.Zero);
 			} catch (TimeoutException) {
 			}
 			return true;

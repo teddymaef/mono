@@ -57,7 +57,7 @@ namespace System.ServiceModel.Channels.Http
 		protected void RegisterListenerCommon (ChannelDispatcher channel, TimeSpan timeout)
 		{
 			lock (entries_lock) {
-				Entries.Add (new HttpChannelListenerEntry (channel, new AutoResetEvent (false)));
+				Entries.Add (new HttpChannelListenerEntry (channel, new ManualResetEvent (false)));
 
 				Entries.Sort (HttpChannelListenerEntry.CompareEntries);
 			}
@@ -92,6 +92,18 @@ namespace System.ServiceModel.Channels.Http
 			return null;
 		}
 
+		public bool WaitForRequest (ChannelDispatcher channel, TimeSpan timeout)
+		{
+			HttpChannelListenerEntry ce;
+			lock (entries_lock) {
+				ce = Entries.FirstOrDefault (e => e.ChannelDispatcher == channel);
+			}
+			if (ce == null)
+				return false;
+
+			return ce.ContextQueue.Count > 0 || ce.WaitHandle.WaitOne (timeout);
+		}
+		
 		public bool TryDequeueRequest (ChannelDispatcher channel, TimeSpan timeout, out HttpContextInfo context)
 		{
 			DateTime start = DateTime.UtcNow;
@@ -111,6 +123,7 @@ namespace System.ServiceModel.Channels.Http
 					if (timeout == TimeSpan.MaxValue)
 						waitTimeout = TimeSpan.FromMilliseconds (int.MaxValue);
 					bool ret = ce.WaitHandle.WaitOne (waitTimeout);
+					ce.WaitHandle.Reset ();
 					return ret && TryDequeueRequest (channel, waitTimeout - (DateTime.UtcNow - start), out context); // recurse, am lazy :/
 				}
 				q.TryDequeue (out context);
