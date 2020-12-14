@@ -25,6 +25,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.ServiceModel.Description;
@@ -45,6 +46,8 @@ namespace System.ServiceModel.Channels
 				context.ListenUriRelativeAddress != null ?
 				new Uri (context.ListenUriBaseAddress, context.ListenUriRelativeAddress) :
 				context.ListenUriBaseAddress;
+			
+			CurrentAsyncThreads = new ConcurrentDictionary<Thread, IAsyncResult> ();
 		}
 
 		Uri listen_uri;
@@ -58,28 +61,37 @@ namespace System.ServiceModel.Channels
 			get { return listen_uri; }
 		}
 
-		protected Thread CurrentAsyncThread { get; private set; }
-		protected IAsyncResult CurrentAsyncResult { get; private set; }
+		protected ConcurrentDictionary<Thread, IAsyncResult> CurrentAsyncThreads { get; }
 
 		protected override void OnAbort ()
 		{
-			if (CurrentAsyncThread != null)
-				CurrentAsyncThread.Abort (); // it is not beautiful but there is no other way to stop it.
+			foreach (var pair in CurrentAsyncThreads)
+				pair.Key.Abort (); // it is not beautiful but there is no other way to stop it.
 		}
 
 		protected override void OnClose (TimeSpan timeout)
 		{
-			if (CurrentAsyncThread != null)
-				if (!CancelAsync (timeout))
-					if (CurrentAsyncThread != null) // being careful
-						CurrentAsyncThread.Abort (); // it is not beautiful but there is no other way to stop it.
+			if (CurrentAsyncThreads.Count == 0 || CancelAsync (timeout))
+				return;
+
+			foreach (var pair in CurrentAsyncThreads)
+				pair.Key.Abort (); // it is not beautiful but there is no other way to stop it.
 		}
 
 		// cancel ongoing async operations and return if it was 
 		// completed successfully. If not, it will abort.
 		public virtual bool CancelAsync (TimeSpan timeout)
 		{
-			return CurrentAsyncResult == null || CurrentAsyncResult.AsyncWaitHandle.WaitOne (timeout);
+			if (CurrentAsyncThreads.Count == 0)
+				return true;
+
+			var start = DateTime.UtcNow;
+			
+			foreach (var pair in CurrentAsyncThreads)
+				if (!pair.Value.AsyncWaitHandle.WaitOne (timeout - (DateTime.UtcNow - start)))
+					return false;
+
+			return true;
 		}
 
 		protected override IAsyncResult OnBeginAcceptChannel (
@@ -90,23 +102,25 @@ namespace System.ServiceModel.Channels
 			//	throw new InvalidOperationException ("Another AcceptChannel operation is in progress");
 
 			ManualResetEvent wait = new ManualResetEvent (false);
+			var resultHolder = new IAsyncResult [1];
 
 			if (accept_channel_delegate == null)
 				accept_channel_delegate = new Func<TimeSpan,TChannel> (delegate (TimeSpan tout) {
 					wait.WaitOne (); // make sure that CurrentAsyncResult is set.
-					CurrentAsyncThread = Thread.CurrentThread;
+					var currThread = Thread.CurrentThread;
+					CurrentAsyncThreads.TryAdd (currThread, resultHolder[0]);
 
 					try {
 						return OnAcceptChannel (tout);
 					} finally {
-						CurrentAsyncThread = null;
-						CurrentAsyncResult = null;
+						CurrentAsyncThreads.TryRemove (currThread, out _);
 					}
 				});
 
-			CurrentAsyncResult = accept_channel_delegate.BeginInvoke (timeout, callback, asyncState);
+			var result = accept_channel_delegate.BeginInvoke (timeout, callback, asyncState);
+			resultHolder[0] = result;
 			wait.Set ();
-			return CurrentAsyncResult;
+			return result;
 		}
 
 		protected override TChannel OnEndAcceptChannel (IAsyncResult result)
