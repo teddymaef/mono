@@ -8,6 +8,8 @@ namespace System.ServiceModel.Dispatcher
 {
 	internal class PostReceiveRequestHandler : BaseRequestProcessorHandler
 	{
+		private static readonly object open_lock = new object ();
+
 		protected override bool ProcessRequest (MessageProcessingContext mrc)
 		{
 			EnsureInstanceContextOpen (mrc.InstanceContext);
@@ -22,8 +24,12 @@ namespace System.ServiceModel.Dispatcher
 
 		void EnsureInstanceContextOpen (InstanceContext ictx)
 		{
-			if (ictx.State != CommunicationState.Opened)
-				ictx.Open ();
+			if (ictx.State != CommunicationState.Opened) {
+				lock (open_lock) {
+					if (ictx.State != CommunicationState.Opened)
+						ictx.Open ();
+				}
+			}
 		}
 	}
 }

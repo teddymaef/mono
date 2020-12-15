@@ -30,6 +30,7 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -351,6 +352,8 @@ namespace System.ServiceModel.Dispatcher
 
 	class DataContractMessagesFormatter : BaseMessagesFormatter
 	{
+		private readonly object create_serializer_lock = new object ();
+
 		DataContractFormatAttribute attr;
 #if !MOBILE
 		DataContractSerializerOperationBehavior serializerBehavior;
@@ -371,8 +374,8 @@ namespace System.ServiceModel.Dispatcher
 			this.attr = attr;
 		}
 
-		Dictionary<MessagePartDescription, XmlObjectSerializer> serializers
-			= new Dictionary<MessagePartDescription,XmlObjectSerializer> ();
+		ConcurrentDictionary<MessagePartDescription, XmlObjectSerializer> serializers
+			= new ConcurrentDictionary<MessagePartDescription,XmlObjectSerializer> ();
 
 		protected override Message PartsToMessage (
 			MessageDescription md, MessageVersion version, string action, object [] parts)
@@ -438,15 +441,21 @@ namespace System.ServiceModel.Dispatcher
 
 		XmlObjectSerializer GetSerializer (MessagePartDescription partDesc)
 		{
-			if (!serializers.ContainsKey (partDesc))
+			if (!serializers.ContainsKey (partDesc)) {
+				lock (create_serializer_lock) {
+					if (!serializers.ContainsKey (partDesc)) {
 #if !MOBILE
-				if (serializerBehavior != null)
-					serializers [partDesc] = serializerBehavior.CreateSerializer(
-						partDesc.Type, partDesc.Name, partDesc.Namespace, OperationKnownTypes as IList<Type>);
-				else
+						if (serializerBehavior != null)
+							serializers [partDesc] = serializerBehavior.CreateSerializer(
+								partDesc.Type, partDesc.Name, partDesc.Namespace, OperationKnownTypes as IList<Type>);
+						else
 #endif
-					serializers [partDesc] = new DataContractSerializer (
-						partDesc.Type, partDesc.Name, partDesc.Namespace, OperationKnownTypes);
+							serializers [partDesc] = new DataContractSerializer (
+								partDesc.Type, partDesc.Name, partDesc.Namespace, OperationKnownTypes);
+					}
+				}
+			}
+
 			return serializers [partDesc];
 		}
 
