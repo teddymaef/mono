@@ -35,6 +35,7 @@ using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.ServiceModel.Security;
 using System.Threading;
+using System.Web;
 using System.Xml;
 
 namespace System.ServiceModel.Channels
@@ -139,6 +140,11 @@ namespace System.ServiceModel.Channels
 						//the whole app.  Ignore for now
 					} catch (IOException ex) {
 						Console.WriteLine ("I/O Exception (Dropped Connection?):" + ex.Message);
+						//on dropped connection, 
+						//whatever you do don't crash
+						//the whole app.  Ignore for now
+					} catch (HttpException ex) {
+						Console.WriteLine ("HTTP Exception (Dropped Connection?):" + ex.Message);
 						//on dropped connection, 
 						//whatever you do don't crash
 						//the whole app.  Ignore for now
