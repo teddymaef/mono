@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ServiceModel.Channels;
@@ -45,7 +46,7 @@ namespace System.ServiceModel
 
 		ServiceEndpoint service_endpoint;
 		IChannelFactory factory;
-		List<IClientChannel> opened_channels = new List<IClientChannel> ();
+		ConcurrentDictionary<OpenedChannelHolder, byte> opened_channels = new ConcurrentDictionary<OpenedChannelHolder, byte> ();
 
 		protected ChannelFactory ()
 		{
@@ -65,7 +66,7 @@ namespace System.ServiceModel
 			}
 		}
 
-		internal List<IClientChannel> OpenedChannels {
+		internal ConcurrentDictionary<OpenedChannelHolder, byte> OpenedChannels {
 			get { return opened_channels; }
 		}
 
@@ -367,8 +368,8 @@ namespace System.ServiceModel
 		protected override void OnClose (TimeSpan timeout)
 		{
 			DateTime start = DateTime.Now;
-			foreach (var ch in opened_channels.ToArray ())
-				ch.Close (timeout - (DateTime.Now - start));
+			foreach (var ch in opened_channels.Keys)
+				ch.Channel.Close (timeout - (DateTime.Now - start));
 			if (OpenedChannelFactory != null)
 				OpenedChannelFactory.Close (timeout - (DateTime.Now - start));
 		}
@@ -398,4 +399,13 @@ namespace System.ServiceModel
 		void ItShouldReallyGone ();
 	}
 #endif
+
+	internal class OpenedChannelHolder
+	{ 
+		public OpenedChannelHolder(IClientChannel channel)
+		{
+			this.Channel = channel;
+		}
+		public IClientChannel Channel { get; }
+	}
 }
