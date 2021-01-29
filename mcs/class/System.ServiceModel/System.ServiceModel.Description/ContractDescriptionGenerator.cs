@@ -391,6 +391,8 @@ namespace System.ServiceModel.Description
 				od.BeginMethod = mi;
 			else
 				od.SyncMethod = mi;
+			if (IsGenericTask (mi.ReturnType))
+				od.TaskMethod = mi;
 			od.IsInitiating = oca.IsInitiating;
 			od.IsTerminating = oca.IsTerminating;
 
@@ -414,6 +416,12 @@ namespace System.ServiceModel.Description
 				od.InOrdinalContract = true;
 
 			return od;
+		}
+
+		static bool IsGenericTask (Type type) {
+			return type != null 
+			       && type.IsGenericType 
+			       && type.GetGenericTypeDefinition () == typeof (System.Threading.Tasks.Task<>);
 		}
 
 		static bool HasInvalidMessageContract (MethodInfo mi, bool async)
@@ -448,6 +456,9 @@ namespace System.ServiceModel.Description
 			if (!isRequest && retType == null)
 				retType =  mi.ReturnType;
 
+			if (IsGenericTask (retType))
+				retType = retType.GenericTypeArguments [0];
+
 			// If the argument is only one and has [MessageContract]
 			// then infer it as a typed messsage
 			if (isRequest) {
@@ -476,7 +487,10 @@ namespace System.ServiceModel.Description
 
 			// ReturnValue
 			if (!isRequest) {
-				MessagePartDescription mp = CreatePartCore (GetMessageParameterAttribute (mi.ReturnTypeCustomAttributes), od.Name + "Result", md.Body.WrapperNamespace);
+				var baseName = IsGenericTask (mi.ReturnType) && od.Name.EndsWith ("Async")
+					? od.Name.Substring (0, od.Name.Length - 5)
+					: od.Name; 
+				MessagePartDescription mp = CreatePartCore (GetMessageParameterAttribute (mi.ReturnTypeCustomAttributes), baseName + "Result", md.Body.WrapperNamespace);
 				mp.Index = 0;
 				mp.Type = mca != null ? typeof (void) : retType;
 				md.Body.ReturnValue = mp;
