@@ -483,13 +483,11 @@ namespace System.ServiceModel.Description
 			if (mca != null)
 				md = CreateMessageDescription (messageType, cd.Namespace, action, isRequest, isCallback, mca);
 			else
-				md = CreateMessageDescription (oca, plist, od.Name, cd.Namespace, action, isRequest, isCallback, retType);
+				md = CreateMessageDescription (oca, plist, GetName (od, mi), cd.Namespace, action, isRequest, isCallback, retType);
 
 			// ReturnValue
 			if (!isRequest) {
-				var baseName = IsGenericTask (mi.ReturnType) && od.Name.EndsWith ("Async")
-					? od.Name.Substring (0, od.Name.Length - 5)
-					: od.Name; 
+				var baseName = GetName (od, mi); 
 				MessagePartDescription mp = CreatePartCore (GetMessageParameterAttribute (mi.ReturnTypeCustomAttributes), baseName + "Result", md.Body.WrapperNamespace);
 				mp.Index = 0;
 				mp.Type = mca != null ? typeof (void) : retType;
@@ -497,6 +495,12 @@ namespace System.ServiceModel.Description
 			}
 
 			return md;
+		}
+
+		private static string GetName (OperationDescription od, MethodInfo mi) {
+			return IsGenericTask (mi.ReturnType) && od.Name.EndsWith ("Async")
+				? od.Name.Substring (0, od.Name.Length - 5)
+				: od.Name;
 		}
 
 		public static MessageDescription CreateMessageDescription (
