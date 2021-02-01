@@ -34,6 +34,7 @@ using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
 using System.ServiceModel.Security;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml;
 
 namespace System.ServiceModel.MonoInternal
@@ -574,7 +575,17 @@ namespace System.ServiceModel.MonoInternal
 				parameters = new object [endParams.Length - 1];
 			}
 
-			return op.Formatter.DeserializeReply (res, parameters);
+			var resObj = op.Formatter.DeserializeReply (res, parameters);
+
+			if (od.TaskMethod != null) {
+				var taskType = od.TaskMethod.ReturnType.GenericTypeArguments [0];
+				var fromResultMethod = typeof (Task)
+					.GetMethod (nameof (Task.FromResult), BindingFlags.Static | BindingFlags.Public)
+					.MakeGenericMethod (taskType);
+				return fromResultMethod.Invoke (null, new [] {resObj});
+			}
+
+			return resObj;
 		}
 
 		#region Message-based Request() and Send()

@@ -39,7 +39,7 @@ namespace System.ServiceModel.Description
 	[DebuggerDisplay ("Name={name}, IsInitiating={isInitiating}, IsTerminating={isTerminating}")]
 	public class OperationDescription
 	{
-		MethodInfo begin_method, end_method, sync_method;
+		MethodInfo begin_method, end_method, sync_method, task_method;
 		FaultDescriptionCollection faults
 			= new FaultDescriptionCollection ();
 		ContractDescription contract;
@@ -81,8 +81,8 @@ namespace System.ServiceModel.Description
 
 		[MonoTODO]
 		public MethodInfo TaskMethod {
-			get { throw new NotImplementedException (); }
-			set { throw new NotImplementedException (); }
+			get { return task_method; }
+			set { task_method = value; }
 		}
 
 		public ContractDescription DeclaringContract {
