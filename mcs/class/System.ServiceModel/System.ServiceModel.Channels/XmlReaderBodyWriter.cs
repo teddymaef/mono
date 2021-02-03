@@ -46,7 +46,8 @@ namespace System.ServiceModel.Channels
 			var settings = new XmlReaderSettings () {
 				// FIXME: enable this line (once MaxCharactersInDocument is implemented)
 				// MaxCharactersInDocument = maxBufferSize,
-				ConformanceLevel = ConformanceLevel.Fragment
+				ConformanceLevel = ConformanceLevel.Fragment,
+				CheckCharacters = false
 				};
 			reader = XmlDictionaryReader.CreateDictionaryReader (XmlReader.Create (new StringReader (xml), settings, ctx));
 			reader.MoveToContent ();
@@ -71,7 +72,7 @@ namespace System.ServiceModel.Channels
 				if (consumed)
 					throw new InvalidOperationException ("Body xml reader is already consumed");
 				var sw = new StringWriter ();
-				var xw = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw));
+				var xw = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw, new XmlWriterSettings () { CheckCharacters = false }));
 				xw.WriteStartElement (reader.Prefix, reader.LocalName, reader.NamespaceURI);
 				for (int i = 0; i < reader.AttributeCount; i++) {
 					reader.MoveToAttribute (i);
@@ -119,7 +120,7 @@ namespace System.ServiceModel.Channels
 				throw new InvalidOperationException ("Body xml reader is already consumed");
 			if (reader == null && String.IsNullOrEmpty (xml_bak))
 				return;
-			XmlReader r = xml_bak != null ? XmlReader.Create (new StringReader (xml_bak), null, parser_context) : reader;
+			XmlReader r = xml_bak != null ? XmlReader.Create (new StringReader (xml_bak), new XmlReaderSettings () { CheckCharacters = false }, parser_context) : reader;
 			r.MoveToContent ();
 			writer.WriteNode (r, false);
 			if (xml_bak == null)

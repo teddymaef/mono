@@ -132,6 +132,7 @@ namespace System.ServiceModel.Channels
 			XmlWriterSettings settings = new XmlWriterSettings ();
 			settings.Indent = true;
 			settings.OmitXmlDeclaration = true;
+			settings.CheckCharacters = false;
 
 			using (XmlWriter w = XmlWriter.Create (sw, settings)) {
 				OnBodyToString (XmlDictionaryWriter.CreateDictionaryWriter (w));
@@ -235,6 +236,7 @@ namespace System.ServiceModel.Channels
 			var s = new XmlWriterSettings ();
 			s.OmitXmlDeclaration = true;
 			s.ConformanceLevel = ConformanceLevel.Auto;
+			s.CheckCharacters = false;
 			StringWriter sw = new StringWriter ();
 			using (XmlDictionaryWriter w = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw, s)))
 				WriteBodyContents (w);
@@ -253,6 +255,7 @@ namespace System.ServiceModel.Channels
 		{
 			var ws = new XmlWriterSettings ();
 			ws.ConformanceLevel = ConformanceLevel.Auto;
+			ws.CheckCharacters = false;
 			StringWriter sw = new StringWriter ();
 			using (XmlDictionaryWriter body = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw, ws))) {
 				WriteBodyContents (body);
@@ -266,6 +269,7 @@ namespace System.ServiceModel.Channels
 			
 			var rs = new XmlReaderSettings ();
 			rs.ConformanceLevel = ConformanceLevel.Auto;
+			rs.CheckCharacters = false;
 			
 			return XmlDictionaryReader.CreateDictionaryReader (XmlReader.Create (new StringReader (sw.ToString ()), rs, pc));
 		}

@@ -63,6 +63,7 @@ namespace System.ServiceModel.Channels
 			var s = new XmlWriterSettings ();
 			s.OmitXmlDeclaration = true;
 			s.ConformanceLevel = ConformanceLevel.Auto;
+			s.CheckCharacters = false;
 			StringWriter sw = new StringWriter ();
 			using (XmlDictionaryWriter w = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw, s)))
 				WriteBodyContents (w);
